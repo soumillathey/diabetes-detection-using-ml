@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Diabetes Prediction</title>
+    <link rel="icon" href="icon.gif" type="image/gif" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="heading">Diabetes Prediction Model</h1>
+      <p>Enter the following features to predict Diabetes:</p>
+      <form id="predictionForm" class="form">
+        <label for="feature1">Pregnancies</label>
+        <input
+          class="input"
+          type="number"
+          id="feature1"
+          name="feature1"
+          placeholder="0 to 17"
+        />
+        <label for="feature2">Glucose</label>
+        <input
+          class="input"
+          type="number"
+          id="feature2"
+          name="feature2"
+          placeholder="0 to 199 mg/dL"
+        />
+        <label for="feature3">Blood Pressure</label>
+        <input
+          class="input"
+          type="number"
+          id="feature3"
+          name="feature3"
+          placeholder="0 to 122 mm Hg"
+        />
+        <label for="feature4">Skin Thickness</label>
+        <input
+          class="input"
+          type="float"
+          id="feature4"
+          name="feature4"
+          placeholder="0 to 99 mm"
+        />
+        <label for="feature5">Insulin</label>
+        <input
+          class="input"
+          type="float"
+          id="feature5"
+          name="feature5"
+          placeholder="0 to 846 μU/mL"
+        />
+        <label for="feature6">BMI</label>
+        <input
+          class="input"
+          type="float"
+          id="feature6"
+          name="feature6"
+          placeholder="0 to 67.1 kg/m²"
+        />
+        <label for="feature7">Diabetes Pedigree Function</label>
+        <input
+          class="input"
+          type="float"
+          id="feature7"
+          name="feature7"
+          placeholder="0.078 to 2.42"
+        />
+        <label for="feature8">Age</label>
+        <input
+          type="number"
+          class="input"
+          id="feature8"
+          name="feature8"
+          placeholder="21 to 81 years"
+        />
+        <div class="loader" id="loader"></div>
+        <p id="result"></p>
+        <button type="submit" class="login-button">Predict</button>
+      </form>
+    </div>
+    <script>
+      document
+        .getElementById("predictionForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          const features = [
+            parseFloat(document.getElementById("feature1").value),
+            parseFloat(document.getElementById("feature2").value),
+            parseFloat(document.getElementById("feature3").value),
+            parseFloat(document.getElementById("feature4").value),
+            parseFloat(document.getElementById("feature5").value),
+            parseFloat(document.getElementById("feature6").value),
+            parseFloat(document.getElementById("feature7").value),
+            parseFloat(document.getElementById("feature8").value),
+          ];
+
+          // Show loader
+          document.getElementById("loader").style.display = "block";
+          document.getElementById("result").innerText = "";
+
+          const apiUrl = window.location.protocol.startsWith("http")
+            ? "/predict"
+            : "http://localhost:5001/predict";
+
+          fetch(
+            apiUrl,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ features }),
+            }
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              document.getElementById("result").innerText = data.prediction
+                ? "This person has diabetes."
+                : "This person does not have diabetes.";
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              document.getElementById("result").innerText =
+                "An error occurred. Please try again.";
+            })
+            .finally(() => {
+              document.getElementById("loader").style.display = "none";
+            });
+        });
+    </script>
+  </body>
+</html>
