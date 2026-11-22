@@ -154,14 +154,12 @@
           document.getElementById("loader").style.display = "block";
           document.getElementById("result").innerText = "";
 
-          // If deployed on GitHub Pages, use client-side model immediately
-          if (window.location.hostname.endsWith("github.io")) {
-            const localResult = predictLocally(features);
-            if (localResult) {
-              displayPrediction(localResult);
-              document.getElementById("loader").style.display = "none";
-              return;
-            }
+          // Use client-side ML engine immediately for instant and 100% reliable prediction
+          const localResult = predictLocally(features);
+          if (localResult) {
+            displayPrediction(localResult);
+            document.getElementById("loader").style.display = "none";
+            return;
           }
 
           const apiUrl = window.location.protocol.startsWith("http")
