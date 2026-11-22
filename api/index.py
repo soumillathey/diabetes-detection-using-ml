@@ -27,8 +27,24 @@ def home():
 def predict():
     data = request.get_json(force=True)
     input_data = np.array([data['features']])
-    prediction = model.predict(input_data)
-    return jsonify({'prediction': int(prediction[0])})
+    prediction = int(model.predict(input_data)[0])
+    
+    # Calculate probabilities
+    probabilities = model.predict_proba(input_data)[0]
+    diabetes_prob = round(float(probabilities[1]) * 100, 1)
+    
+    if diabetes_prob >= 60:
+        risk_level = "High Risk"
+    elif diabetes_prob >= 35:
+        risk_level = "Moderate Risk"
+    else:
+        risk_level = "Low Risk"
+
+    return jsonify({
+        'prediction': prediction,
+        'probability': diabetes_prob,
+        'risk_level': risk_level
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
