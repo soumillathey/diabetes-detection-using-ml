@@ -4,6 +4,7 @@
     <title>Diabetes Prediction</title>
     <link rel="icon" href="icon.gif" type="image/gif" />
     <link rel="stylesheet" type="text/css" href="style.css" />
+    <script src="model_data.js"></script>
   </head>
   <body>
     <div class="container">
@@ -80,6 +81,59 @@
       </form>
     </div>
     <script>
+      function predictLocally(features) {
+        if (typeof MODEL_DATA === "undefined" || !MODEL_DATA.trees) return null;
+        let allVals = [];
+        for (let tree of MODEL_DATA.trees) {
+          let node = 0;
+          while (tree.left[node] !== -1) {
+            let feat = tree.feature[node];
+            let thresh = tree.threshold[node];
+            if (features[feat] <= thresh) {
+              node = tree.left[node];
+            } else {
+              node = tree.right[node];
+            }
+          }
+          allVals.push(tree.value[node]);
+        }
+        let c0 = 0, c1 = 0;
+        for (let v of allVals) {
+          c0 += v[0];
+          c1 += v[1];
+        }
+        let prob1 = c1 / (c0 + c1);
+        let pct = Math.round(prob1 * 1000) / 10;
+        return {
+          prediction: prob1 >= 0.5 ? 1 : 0,
+          probability: pct,
+          risk_level: pct >= 60 ? "High Risk" : (pct >= 35 ? "Moderate Risk" : "Low Risk")
+        };
+      }
+
+      function displayPrediction(data) {
+        const isPositive = data.prediction === 1;
+        const prob = data.probability !== undefined ? data.probability : (isPositive ? 80 : 20);
+        const risk = data.risk_level || (isPositive ? "High Risk" : "Low Risk");
+        const color = isPositive ? "#d9534f" : "#28a745";
+        const bgColor = isPositive ? "#fdf2f2" : "#f2f9f4";
+        const borderColor = isPositive ? "#f5c6cb" : "#c3e6cb";
+
+        document.getElementById("result").innerHTML = `
+          <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">
+            <div style="color: ${color}; font-size: 19px; font-weight: bold; margin-bottom: 6px;">
+              ${isPositive ? "⚠️ Likely to Have Diabetes" : "✅ Unlikely to Have Diabetes"}
+            </div>
+            <div style="color: #333; font-size: 15px; margin-bottom: 4px;">
+              Risk Assessment: <strong>${risk}</strong>
+            </div>
+            <div style="color: #555; font-size: 15px;">
+              Estimated Probability: <strong style="color: ${color}; font-size: 18px;">${prob}%</strong>
+            </div>
+          </div>
+        `;
+      }
+
       document
         .getElementById("predictionForm")
         .addEventListener("submit", function (event) {
@@ -100,6 +154,16 @@
           document.getElementById("loader").style.display = "block";
           document.getElementById("result").innerText = "";
 
+          // If deployed on GitHub Pages, use client-side model immediately
+          if (window.location.hostname.endsWith("github.io")) {
+            const localResult = predictLocally(features);
+            if (localResult) {
+              displayPrediction(localResult);
+              document.getElementById("loader").style.display = "none";
+              return;
+            }
+          }
+
           const apiUrl = window.location.protocol.startsWith("http")
             ? "/predict"
             : "http://localhost:5001/predict";
@@ -114,33 +178,22 @@
               body: JSON.stringify({ features }),
             }
           )
-            .then((response) => response.json())
+            .then((response) => {
+              if (!response.ok) throw new Error("HTTP error " + response.status);
+              return response.json();
+            })
             .then((data) => {
-              const isPositive = data.prediction === 1;
-              const prob = data.probability !== undefined ? data.probability : (isPositive ? 80 : 20);
-              const risk = data.risk_level || (isPositive ? "High Risk" : "Low Risk");
-              const color = isPositive ? "#d9534f" : "#28a745";
-              const bgColor = isPositive ? "#fdf2f2" : "#f2f9f4";
-              const borderColor = isPositive ? "#f5c6cb" : "#c3e6cb";
-
-              document.getElementById("result").innerHTML = `
-                <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">
-                  <div style="color: ${color}; font-size: 19px; font-weight: bold; margin-bottom: 6px;">
-                    ${isPositive ? "⚠️ Likely to Have Diabetes" : "✅ Unlikely to Have Diabetes"}
-                  </div>
-                  <div style="color: #333; font-size: 15px; margin-bottom: 4px;">
-                    Risk Assessment: <strong>${risk}</strong>
-                  </div>
-                  <div style="color: #555; font-size: 15px;">
-                    Estimated Probability: <strong style="color: ${color}; font-size: 18px;">${prob}%</strong>
-                  </div>
-                </div>
-              `;
+              displayPrediction(data);
             })
             .catch((error) => {
-              console.error("Error:", error);
-              document.getElementById("result").innerText =
-                "An error occurred. Please try again.";
+              console.warn("Backend unavailable, using client-side model fallback:", error);
+              const localResult = predictLocally(features);
+              if (localResult) {
+                displayPrediction(localResult);
+              } else {
+                document.getElementById("result").innerText =
+                  "An error occurred. Please try again.";
+              }
             })
             .finally(() => {
               document.getElementById("loader").style.display = "none";
